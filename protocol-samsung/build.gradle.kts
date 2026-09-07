@@ -23,7 +23,6 @@ android {
 dependencies {
     implementation(project(":core"))
 
-    implementation(platform(libs.okhttp.bom))
-    implementation(libs.okhttp.android)
+    implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.core)
 }
