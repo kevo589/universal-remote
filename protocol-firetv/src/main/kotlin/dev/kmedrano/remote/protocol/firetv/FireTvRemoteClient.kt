@@ -13,10 +13,14 @@ import dev.kmedrano.remote.core.PairingResult
 import dev.kmedrano.remote.core.RemoteClient
 import dev.kmedrano.remote.core.RemoteCommand
 import dev.kmedrano.remote.core.TvDevice
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -57,6 +61,10 @@ internal class FireTvRemoteClient(
     @Volatile
     private var connection: AdbConnection? = null
 
+    /** Owns background stream cleanup (see [runShell]) so it outlives any single command call
+     * but is torn down along with this client. */
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override suspend fun connect(): Result<Unit> =
         openConnection(timeoutMs = RECONNECT_TIMEOUT_MS, throwOnUnauthorised = true)
 
@@ -78,6 +86,7 @@ internal class FireTvRemoteClient(
         }
 
     override suspend fun disconnect() {
+        cleanupScope.cancel()
         withContext(Dispatchers.IO) { runCatching { connection?.close() } }
         connection = null
         _connectionState.value = ConnectionState.Disconnected
@@ -95,21 +104,25 @@ internal class FireTvRemoteClient(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val stream = conn.open("shell:$command")
-                try {
-                    // Closing our end right after open() can race the device tearing the shell
-                    // process down before the command actually runs — open() only confirms the
-                    // stream/process was started, not that it finished. If the remote closes the
-                    // stream on its own first (process exited), this resolves immediately; Fire
-                    // OS's adbd doesn't reliably do that promptly for this service though, so the
-                    // timeout is deliberately short — `input keyevent` finishes in a few ms, long
-                    // before this window, so it's just a floor, not something we expect to hit.
-                    withTimeoutOrNull(SHELL_COMPLETE_TIMEOUT_MS) {
+
+                // open() only confirms the command was accepted and its process started on the
+                // device, not that it finished — closing our end too early can race the device
+                // tearing that process down before it actually completes. But Fire OS's adbd
+                // doesn't reliably signal completion by closing the stream back to us either, so
+                // waiting for that (or a short timeout standing in for it) here made *every*
+                // button press feel laggy without actually being more correct: a longer timeout
+                // just blocks this call for that long, whether or not the command needed it.
+                //
+                // Cleanup runs in the background instead, on its own generous timer — the
+                // command is already running by the time we return, so the UI doesn't wait on
+                // any of this.
+                cleanupScope.launch {
+                    withTimeoutOrNull(SHELL_CLEANUP_TIMEOUT_MS) {
                         runInterruptible { runCatching { stream.read() } }
                     }
-                    Unit
-                } finally {
                     runCatching { stream.close() }
                 }
+                Unit
             }
         }
     }
@@ -150,6 +163,6 @@ internal class FireTvRemoteClient(
         const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
         const val PAIRING_TIMEOUT_MS = 60_000L
         const val RECONNECT_TIMEOUT_MS = 10_000L
-        const val SHELL_COMPLETE_TIMEOUT_MS = 150L
+        const val SHELL_CLEANUP_TIMEOUT_MS = 2_000L
     }
 }
