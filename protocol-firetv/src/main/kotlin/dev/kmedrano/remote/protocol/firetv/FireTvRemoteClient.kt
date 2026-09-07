@@ -98,11 +98,11 @@ internal class FireTvRemoteClient(
                 try {
                     // Closing our end right after open() can race the device tearing the shell
                     // process down before the command actually runs — open() only confirms the
-                    // stream/process was started, not that it finished. Waiting for the remote
-                    // to close the stream on its own (which happens once the process exits) is
-                    // what actually confirms completion; a read() failure (including "stream
-                    // closed") is that expected signal, not an error. The timeout is a safety
-                    // net in case a command doesn't exit promptly.
+                    // stream/process was started, not that it finished. If the remote closes the
+                    // stream on its own first (process exited), this resolves immediately; Fire
+                    // OS's adbd doesn't reliably do that promptly for this service though, so the
+                    // timeout is deliberately short — `input keyevent` finishes in a few ms, long
+                    // before this window, so it's just a floor, not something we expect to hit.
                     withTimeoutOrNull(SHELL_COMPLETE_TIMEOUT_MS) {
                         runInterruptible { runCatching { stream.read() } }
                     }
@@ -150,6 +150,6 @@ internal class FireTvRemoteClient(
         const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
         const val PAIRING_TIMEOUT_MS = 60_000L
         const val RECONNECT_TIMEOUT_MS = 10_000L
-        const val SHELL_COMPLETE_TIMEOUT_MS = 3_000L
+        const val SHELL_COMPLETE_TIMEOUT_MS = 150L
     }
 }
