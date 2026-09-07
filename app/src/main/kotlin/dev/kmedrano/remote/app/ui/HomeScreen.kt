@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VolumeDown
@@ -48,11 +49,24 @@ fun HomeScreen(
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val supported = remember(devices) { viewModel.supportedProtocols() }
 
+    val safeTab = if (devices.isEmpty()) 0 else selectedTab.coerceIn(0, devices.lastIndex)
+    val activeDevice: TvDevice? = devices.getOrNull(safeTab)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Universal Remote") },
                 actions = {
+                    if (activeDevice != null) {
+                        IconButton(
+                            onClick = {
+                                viewModel.removeDevice(activeDevice.id)
+                                selectedTab = 0
+                            },
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Remove ${activeDevice.displayName}")
+                        }
+                    }
                     FilterChip(
                         selected = syncModeEnabled,
                         onClick = { viewModel.toggleSyncMode() },
@@ -74,10 +88,9 @@ fun HomeScreen(
                 SyncModeBar(onCommand = viewModel::broadcastSyncCommand)
             }
 
-            if (devices.isEmpty()) {
+            if (activeDevice == null) {
                 EmptyState(onAddDeviceClick)
             } else {
-                val safeTab = selectedTab.coerceIn(0, devices.lastIndex)
                 TabRow(selectedTabIndex = safeTab) {
                     devices.forEachIndexed { index, device ->
                         Tab(
@@ -87,7 +100,6 @@ fun HomeScreen(
                         )
                     }
                 }
-                val activeDevice: TvDevice = devices[safeTab]
                 DeviceRemoteScreen(
                     device = activeDevice,
                     isSupported = activeDevice.protocol in supported,

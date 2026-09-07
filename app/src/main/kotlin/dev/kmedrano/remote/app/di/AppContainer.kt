@@ -85,6 +85,13 @@ class AppContainer(context: Context) {
             appScope.launch { repository.saveCredential(device.id, updated) }
         }
         _activeClients.update { it + (device.id to client) }
-        appScope.launch { client.connect() }
+
+        // Only auto-reconnect devices that have paired before (i.e. we have a stored
+        // credential). A brand-new device has no credential yet and is left for the explicit
+        // startPairing() call PairingScreen makes — calling connect() here too would race a
+        // second connection attempt against that one on the same client.
+        if (credential != null) {
+            appScope.launch { client.connect() }
+        }
     }
 }
