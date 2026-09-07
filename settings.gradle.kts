@@ -18,3 +18,4 @@ rootProject.name = "TvUniversalRemote"
 
 include(":app")
 include(":core")
+include(":protocol-samsung")

@@ -11,13 +11,15 @@ build order.
 
 ## Status
 
-🚧 **M0 — scaffold.** App shell, navigation, and CI are in place. No device protocol is wired
-up yet — added devices show up as a tab with a "not implemented yet" banner, and every
-button is present but currently a no-op. See the milestone list below for what's next.
+🚧 **M1 — Samsung wired up, other three still placeholders.** Devices persist across app
+restarts now (Room + Keystore-encrypted credentials), and Samsung TVs go through a real
+pairing flow (on-TV approval prompt) and respond to D-pad/volume/power/back/home/menu.
+Apple TV, Fire TV, and Chromecast still show the "not implemented yet" banner with no-op
+buttons.
 
 | Device | Status |
 |---|---|
-| Samsung Tizen TV | ⏳ not started |
+| Samsung Tizen TV | ✅ core navigation working — needs real-device testing feedback |
 | Amazon Fire TV | ⏳ not started |
 | Chromecast with Google TV | ⏳ not started |
 | Apple TV | ⏳ not started |
@@ -49,9 +51,10 @@ The output APK lands in `app/build/outputs/apk/debug/`.
 
 ```
 app/                 UI (Jetpack Compose), navigation, the foreground connection service, DI
-core/                Protocol-agnostic contract (RemoteClient, commands, connection state)
-protocol-apple/      Apple TV — Companion protocol            (not yet implemented)
-protocol-samsung/    Samsung Tizen TV — WebSocket JSON API     (not yet implemented)
+core/                Protocol-agnostic contract (RemoteClient, commands, connection state,
+                     Room + Keystore-encrypted device/credential persistence)
+protocol-samsung/    Samsung Tizen TV — WebSocket JSON API     ✅ implemented
+protocol-apple/      Apple TV — Companion protocol             (not yet implemented)
 protocol-firetv/     Fire TV — ADB protocol                    (not yet implemented)
 protocol-androidtv/  Chromecast w/ Google TV — Android TV Remote Protocol v2 (not yet implemented)
 ```
@@ -63,13 +66,26 @@ device at once) only ever depend on that interface.
 ## Build order
 
 1. ~~Scaffold + CI~~ ✅
-2. Samsung (lowest risk — validates the whole architecture end-to-end cheaply)
+2. ~~Samsung~~ ✅ (lowest risk — validates the whole architecture end-to-end cheaply)
 3. Fire TV
 4. Chromecast with Google TV / Android TV Remote v2
 5. Apple TV (highest risk — no existing Kotlin/Java implementation of Apple's proprietary
    Companion protocol exists anywhere; this is a from-scratch port of the crypto/pairing
    logic the Python `pyatv` project reverse-engineered)
 6. Sync mode wiring + reconnect/error-state polish
+
+## Testing the Samsung protocol
+
+Add the TV with its local IP address (find it in the TV's Settings → Network → Network
+Status). On first connect, the TV shows an on-screen popup asking to allow "Universal
+Remote" to connect — approve it there; the app waits up to 60 seconds for that. After
+approving once, reconnecting on future app launches should be silent (no prompt).
+
+Known rough edges worth reporting back if you hit them: powering the TV **on** from this app
+probably won't work if it's fully asleep/off-network (Samsung's API can only reliably power
+TVs *off* without Wake-on-LAN, which isn't implemented yet), and the play/pause button sends
+a single "pause" keycode since Samsung remotes have separate physical Play/Pause buttons
+rather than one toggle.
 
 ## A note on how this works
 

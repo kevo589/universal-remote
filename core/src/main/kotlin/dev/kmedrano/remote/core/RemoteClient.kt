@@ -31,7 +31,19 @@ interface RemoteClient {
     suspend fun launchApp(app: LaunchableApp): Result<Unit>
 }
 
-/** Creates a [RemoteClient] for a given [TvDevice]. One factory per [ProtocolType]. */
+/**
+ * Creates a [RemoteClient] for a given [TvDevice]. One factory per [ProtocolType].
+ *
+ * [storedCredential] is whatever opaque credential bytes were persisted from a previous
+ * successful pairing (null if this device has never paired before). The created client should
+ * call [onCredentialUpdated] whenever it obtains a new or refreshed credential worth persisting
+ * (typically right after [RemoteClient.startPairing] succeeds) — the caller takes care of
+ * actually storing it.
+ */
 fun interface RemoteClientFactory {
-    fun create(device: TvDevice): RemoteClient
+    fun create(
+        device: TvDevice,
+        storedCredential: ByteArray?,
+        onCredentialUpdated: (ByteArray) -> Unit,
+    ): RemoteClient
 }

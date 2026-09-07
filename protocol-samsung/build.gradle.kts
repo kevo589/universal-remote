@@ -1,11 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "dev.kmedrano.remote.core"
+    namespace = "dev.kmedrano.remote.protocol.samsung"
     compileSdk = 34
 
     defaultConfig {
@@ -22,10 +21,9 @@ android {
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(project(":core"))
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementation(platform(libs.okhttp.bom))
+    implementation(libs.okhttp.android)
+    implementation(libs.kotlinx.coroutines.core)
 }

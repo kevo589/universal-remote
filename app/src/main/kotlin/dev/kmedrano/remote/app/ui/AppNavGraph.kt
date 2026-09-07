@@ -10,14 +10,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.kmedrano.remote.app.di.AppContainer
-import dev.kmedrano.remote.core.ProtocolType
 
 private object Routes {
     const val HOME = "home"
     const val ADD_DEVICE = "addDevice"
-    const val PAIRING = "pairing/{protocol}"
+    const val PAIRING = "pairing/{deviceId}"
 
-    fun pairing(protocol: ProtocolType) = "pairing/${protocol.name}"
+    fun pairing(deviceId: String) = "pairing/$deviceId"
 }
 
 @Composable
@@ -40,8 +39,8 @@ fun AppNavGraph(container: AppContainer) {
             AddDeviceScreen(
                 onBack = { navController.popBackStack() },
                 onDeviceChosen = { protocol, displayName, host ->
-                    viewModel.addDevice(protocol, displayName, host)
-                    navController.navigate(Routes.pairing(protocol)) {
+                    val deviceId = viewModel.addDevice(protocol, displayName, host)
+                    navController.navigate(Routes.pairing(deviceId)) {
                         popUpTo(Routes.HOME)
                     }
                 },
@@ -49,17 +48,13 @@ fun AppNavGraph(container: AppContainer) {
         }
         composable(
             route = Routes.PAIRING,
-            arguments = listOf(navArgument("protocol") { type = NavType.StringType }),
+            arguments = listOf(navArgument("deviceId") { type = NavType.StringType }),
         ) { backStackEntry ->
-            val protocolName = backStackEntry.arguments?.getString("protocol")
-            val protocol = ProtocolType.entries.firstOrNull { it.name == protocolName }
-                ?: ProtocolType.SAMSUNG_TIZEN
+            val deviceId = backStackEntry.arguments?.getString("deviceId").orEmpty()
             PairingScreen(
-                protocol = protocol,
-                isSupported = protocol in viewModel.supportedProtocols(),
-                onDone = {
-                    navController.popBackStack(Routes.HOME, inclusive = false)
-                },
+                deviceId = deviceId,
+                viewModel = viewModel,
+                onDone = { navController.popBackStack(Routes.HOME, inclusive = false) },
             )
         }
     }
