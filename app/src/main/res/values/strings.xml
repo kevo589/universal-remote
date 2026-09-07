@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Universal Remote</string>
+    <string name="notification_channel_name">Device connections</string>
+    <string name="notification_channel_description">Shows how many TVs are currently connected</string>
+</resources>

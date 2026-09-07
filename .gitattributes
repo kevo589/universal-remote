@@ -1,0 +1,10 @@
+# Ensure the Gradle wrapper script always keeps Unix line endings, regardless of the
+# committer's OS or git config — a CRLF shebang line breaks it on Linux CI runners.
+gradlew text eol=lf
+*.sh text eol=lf
+
+gradlew.bat text eol=crlf
+
+*.jar binary
+*.png binary
+*.jpg binary
