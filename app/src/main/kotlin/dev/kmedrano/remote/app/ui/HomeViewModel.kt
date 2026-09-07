@@ -9,9 +9,12 @@ import dev.kmedrano.remote.core.ProtocolType
 import dev.kmedrano.remote.core.RemoteClient
 import dev.kmedrano.remote.core.RemoteCommand
 import dev.kmedrano.remote.core.TvDevice
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -25,6 +28,10 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _syncModeEnabled = MutableStateFlow(false)
     val syncModeEnabled: StateFlow<Boolean> = _syncModeEnabled.asStateFlow()
+
+    /** One-shot command-failure messages for the UI to show (a Toast, say) — not persisted state. */
+    private val _commandErrors = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val commandErrors: SharedFlow<String> = _commandErrors.asSharedFlow()
 
     fun toggleSyncMode() {
         _syncModeEnabled.update { !it }
@@ -56,11 +63,20 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     fun sendCommand(deviceId: String, command: RemoteCommand) {
         val client = container.clientFor(deviceId) ?: return
-        viewModelScope.launch { client.sendCommand(command) }
+        viewModelScope.launch {
+            client.sendCommand(command).onFailure { error ->
+                _commandErrors.tryEmit(error.message ?: "Command failed")
+            }
+        }
     }
 
     fun broadcastSyncCommand(command: RemoteCommand) {
-        viewModelScope.launch { container.syncModeController.broadcast(command) }
+        viewModelScope.launch {
+            val failures = container.syncModeController.broadcast(command).values.count { it.isFailure }
+            if (failures > 0) {
+                _commandErrors.tryEmit("Command failed on $failures device(s)")
+            }
+        }
     }
 
     suspend fun startPairing(client: RemoteClient): PairingResult = client.startPairing()

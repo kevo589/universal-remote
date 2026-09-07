@@ -25,7 +25,9 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -34,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.kmedrano.remote.core.RemoteCommand
 import dev.kmedrano.remote.core.TvDevice
@@ -51,6 +54,13 @@ fun HomeScreen(
 
     val safeTab = if (devices.isEmpty()) 0 else selectedTab.coerceIn(0, devices.lastIndex)
     val activeDevice: TvDevice? = devices.getOrNull(safeTab)
+
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.commandErrors.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {

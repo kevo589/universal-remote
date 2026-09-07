@@ -17,7 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.TimeUnit
@@ -93,7 +95,21 @@ internal class FireTvRemoteClient(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val stream = conn.open("shell:$command")
-                stream.close()
+                try {
+                    // Closing our end right after open() can race the device tearing the shell
+                    // process down before the command actually runs — open() only confirms the
+                    // stream/process was started, not that it finished. Waiting for the remote
+                    // to close the stream on its own (which happens once the process exits) is
+                    // what actually confirms completion; a read() failure (including "stream
+                    // closed") is that expected signal, not an error. The timeout is a safety
+                    // net in case a command doesn't exit promptly.
+                    withTimeoutOrNull(SHELL_COMPLETE_TIMEOUT_MS) {
+                        runInterruptible { runCatching { stream.read() } }
+                    }
+                    Unit
+                } finally {
+                    runCatching { stream.close() }
+                }
             }
         }
     }
@@ -134,5 +150,6 @@ internal class FireTvRemoteClient(
         const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
         const val PAIRING_TIMEOUT_MS = 60_000L
         const val RECONNECT_TIMEOUT_MS = 10_000L
+        const val SHELL_COMPLETE_TIMEOUT_MS = 3_000L
     }
 }
