@@ -38,6 +38,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":protocol-samsung"))
+    implementation(project(":protocol-firetv"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

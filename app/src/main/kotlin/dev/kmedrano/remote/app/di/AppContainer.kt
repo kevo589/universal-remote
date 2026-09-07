@@ -7,6 +7,7 @@ import dev.kmedrano.remote.core.RemoteClientFactory
 import dev.kmedrano.remote.core.SyncModeController
 import dev.kmedrano.remote.core.TvDevice
 import dev.kmedrano.remote.core.data.DeviceRepository
+import dev.kmedrano.remote.protocol.firetv.FireTvRemoteClientFactory
 import dev.kmedrano.remote.protocol.samsung.SamsungTvRemoteClientFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,7 @@ class AppContainer(context: Context) {
 
     private val clientFactories: Map<ProtocolType, RemoteClientFactory> = mapOf(
         ProtocolType.SAMSUNG_TIZEN to SamsungTvRemoteClientFactory,
+        ProtocolType.FIRE_TV_ADB to FireTvRemoteClientFactory,
     )
 
     private val _devices = MutableStateFlow<List<TvDevice>>(emptyList())

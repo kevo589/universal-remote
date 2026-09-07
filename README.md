@@ -11,16 +11,14 @@ build order.
 
 ## Status
 
-🚧 **M1 — Samsung wired up, other three still placeholders.** Devices persist across app
-restarts now (Room + Keystore-encrypted credentials), and Samsung TVs go through a real
-pairing flow (on-TV approval prompt) and respond to D-pad/volume/power/back/home/menu.
-Apple TV, Fire TV, and Chromecast still show the "not implemented yet" banner with no-op
-buttons.
+🚧 **M2 — Samsung confirmed working, Fire TV just landed.** Devices persist across app
+restarts (Room + Keystore-encrypted credentials). Apple TV and Chromecast still show the
+"not implemented yet" banner with no-op buttons.
 
 | Device | Status |
 |---|---|
-| Samsung Tizen TV | ✅ core navigation working — needs real-device testing feedback |
-| Amazon Fire TV | ⏳ not started |
+| Samsung Tizen TV | ✅ confirmed working on real hardware (2 TVs) |
+| Amazon Fire TV | ✅ implemented — needs real-device testing feedback |
 | Chromecast with Google TV | ⏳ not started |
 | Apple TV | ⏳ not started |
 
@@ -54,8 +52,8 @@ app/                 UI (Jetpack Compose), navigation, the foreground connection
 core/                Protocol-agnostic contract (RemoteClient, commands, connection state,
                      Room + Keystore-encrypted device/credential persistence)
 protocol-samsung/    Samsung Tizen TV — WebSocket JSON API     ✅ implemented
+protocol-firetv/     Fire TV — ADB protocol                    ✅ implemented
 protocol-apple/      Apple TV — Companion protocol             (not yet implemented)
-protocol-firetv/     Fire TV — ADB protocol                    (not yet implemented)
 protocol-androidtv/  Chromecast w/ Google TV — Android TV Remote Protocol v2 (not yet implemented)
 ```
 
@@ -67,7 +65,7 @@ device at once) only ever depend on that interface.
 
 1. ~~Scaffold + CI~~ ✅
 2. ~~Samsung~~ ✅ (lowest risk — validates the whole architecture end-to-end cheaply)
-3. Fire TV
+3. ~~Fire TV~~ ✅
 4. Chromecast with Google TV / Android TV Remote v2
 5. Apple TV (highest risk — no existing Kotlin/Java implementation of Apple's proprietary
    Companion protocol exists anywhere; this is a from-scratch port of the crypto/pairing
@@ -86,6 +84,23 @@ probably won't work if it's fully asleep/off-network (Samsung's API can only rel
 TVs *off* without Wake-on-LAN, which isn't implemented yet), and the play/pause button sends
 a single "pause" keycode since Samsung remotes have separate physical Play/Pause buttons
 rather than one toggle.
+
+## Testing the Fire TV protocol
+
+First, on the Fire TV itself: **Settings → My Fire TV → Developer Options** (if you don't see
+Developer Options, go to **My Fire TV → About** and click the device name / build number
+repeatedly to unlock it), then turn on **ADB Debugging** and **Apps from Unknown Sources**.
+Find the IP under **Settings → My Fire TV → About → Network**.
+
+Add the device in the app the same way as Samsung. On first connect, the Fire TV shows an
+"Allow USB debugging from this app?" popup with a key fingerprint — approve it (checking
+"Always allow" avoids being asked again). The app waits up to 60 seconds for that.
+
+Because this is full ADB access rather than a fixed remote-key vocabulary, power is more
+precise here than on Samsung: the power button sends a real sleep/wake keycode rather than a
+single ambiguous toggle. If a Fire TV you've already paired ever rejects reconnecting (e.g.
+you revoked USB debugging authorizations on the device, or factory reset it), you'll need to
+remove and re-add it in the app to pair fresh — the error message should say so.
 
 ## A note on how this works
 

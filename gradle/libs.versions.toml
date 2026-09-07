@@ -11,6 +11,7 @@ coroutines = "1.8.1"
 materialComponents = "1.12.0"
 room = "2.8.4"
 okhttp = "4.12.0"
+adblib = "1.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,6 +33,7 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+adblib = { group = "com.tananaev", name = "adblib", version.ref = "adblib" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
