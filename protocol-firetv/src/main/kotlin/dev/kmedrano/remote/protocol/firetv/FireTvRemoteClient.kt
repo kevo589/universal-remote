@@ -116,10 +116,19 @@ internal class FireTvRemoteClient(
     private suspend fun runShell(command: String): Result<Unit> {
         val shell = shellStream ?: return Result.failure(IllegalStateException("Not connected to ${device.displayName}"))
         return withContext(Dispatchers.IO) {
+            // `input keyevent` is a separate process on Fire OS. Running it in the foreground
+            // makes the one persistent shell wait for each keypress to finish; rapid taps then
+            // form a stale, multi-second queue (for example, volume keeps changing after the
+            // user has moved on). Background each short-lived input process so the shell can
+            // accept the next current command immediately. Its output is deliberately discarded
+            // because the shell-output drain only exists to keep the ADB stream healthy.
+            //
             // AdbStream's write(String) overload null-terminates the payload (it's meant for the
             // ADB "open" destination convention) — a shell reading from stdin needs a newline to
             // treat this as a complete command line, so this writes raw bytes instead.
-            runCatching { shell.write("$command\n".toByteArray(Charsets.UTF_8)) }
+            runCatching {
+                shell.write("$command >/dev/null 2>&1 &\n".toByteArray(Charsets.UTF_8))
+            }
         }
     }
 
